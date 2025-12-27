@@ -1,0 +1,2 @@
+/usr/bin/ar qc libchromium-zlib.a "CMakeFiles/chromium-zlib.dir/fast_crc32.cpp.o" "CMakeFiles/chromium-zlib.dir/crc32_simd_sse42.cpp.o" "CMakeFiles/chromium-zlib.dir/crc32_simd_avx512.cpp.o"
+/usr/bin/ranlib libchromium-zlib.a
