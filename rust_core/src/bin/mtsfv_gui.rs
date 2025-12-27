@@ -31,16 +31,16 @@ impl MtsfvGui {
         {
             for path in files {
                 let worker_tx = self.tx.clone();
-                let path_clone = path.clone();
                 self.entries.push(FileEntry {
-                    path: path_clone.clone(),
+                    path: path.clone(),
                     state: EntryState::Pending,
                 });
 
+                let worker_path = path.clone();
                 thread::spawn(move || {
-                    let result =
-                        crc32_path(&path_clone).map_err(|e| format!("{}: {}", path_clone.display(), e));
-                    let _ = worker_tx.send((path_clone, result));
+                    let result = crc32_path(&worker_path)
+                        .map_err(|e| format!("{}: {}", worker_path.display(), e));
+                    let _ = worker_tx.send((worker_path, result));
                 });
             }
             self.status = "Calculating...".to_string();

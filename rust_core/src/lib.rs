@@ -227,6 +227,14 @@ mod tests {
             .as_nanos();
         tmp_path.push(format!("mtsfv_crc_test_{}.txt", unique));
 
+        struct TempFile(std::path::PathBuf);
+        impl Drop for TempFile {
+            fn drop(&mut self) {
+                let _ = std::fs::remove_file(&self.0);
+            }
+        }
+        let _cleanup = TempFile(tmp_path.clone());
+
         {
             let mut f = File::create(&tmp_path).expect("create temp file");
             f.write_all(b"123456789").expect("write temp data");
@@ -234,7 +242,5 @@ mod tests {
 
         let crc = crc32_path(&tmp_path).expect("crc32 calculation");
         assert_eq!(crc, 0xCBF43926);
-
-        let _ = std::fs::remove_file(&tmp_path);
     }
 }
