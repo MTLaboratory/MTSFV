@@ -1,6 +1,7 @@
 use eframe::{egui, App};
 use mtsfv_core::crc32_path;
 use std::path::PathBuf;
+use std::sync::mpsc;
 use std::thread;
 
 #[derive(Debug)]
@@ -11,24 +12,15 @@ struct FileEntry {
 
 #[derive(Debug)]
 enum EntryState {
-    Pending(Option<thread::JoinHandle<Result<u32, String>>>),
+    Pending,
     Done(Result<u32, String>),
-}
-
-impl FileEntry {
-    fn from_path(path: PathBuf) -> Self {
-        let worker_path = path.clone();
-        let handle = thread::spawn(move || crc32_path(&worker_path).map_err(|e| e.to_string()));
-        Self {
-            path,
-            state: EntryState::Pending(Some(handle)),
-        }
-    }
 }
 
 struct MtsfvGui {
     entries: Vec<FileEntry>,
     status: String,
+    tx: mpsc::Sender<(PathBuf, Result<u32, String>)>,
+    rx: mpsc::Receiver<(PathBuf, Result<u32, String>)>,
 }
 
 impl MtsfvGui {
@@ -38,7 +30,18 @@ impl MtsfvGui {
             .pick_files()
         {
             for path in files {
-                self.entries.push(FileEntry::from_path(path));
+                let worker_tx = self.tx.clone();
+                let path_clone = path.clone();
+                self.entries.push(FileEntry {
+                    path: path_clone.clone(),
+                    state: EntryState::Pending,
+                });
+
+                thread::spawn(move || {
+                    let result =
+                        crc32_path(&path_clone).map_err(|e| format!("{}: {}", path_clone.display(), e));
+                    let _ = worker_tx.send((path_clone, result));
+                });
             }
             self.status = "Calculating...".to_string();
         }
@@ -50,17 +53,13 @@ impl MtsfvGui {
     }
 
     fn poll_workers(&mut self) {
-        for entry in &mut self.entries {
-            if let EntryState::Pending(handle_opt) = &mut entry.state {
-                if let Some(handle) = handle_opt {
-                    if handle.is_finished() {
-                        let handle = handle_opt.take().expect("checked Some");
-                        let result = handle
-                            .join()
-                            .unwrap_or_else(|_| Err("Background worker panicked".to_string()));
-                        entry.state = EntryState::Done(result);
-                    }
-                }
+        while let Ok((path, result)) = self.rx.try_recv() {
+            if let Some(entry) = self
+                .entries
+                .iter_mut()
+                .find(|e| e.path == path && matches!(e.state, EntryState::Pending))
+            {
+                entry.state = EntryState::Done(result);
             }
         }
         if self
@@ -75,9 +74,12 @@ impl MtsfvGui {
 
 impl Default for MtsfvGui {
     fn default() -> Self {
+        let (tx, rx) = mpsc::channel();
         Self {
             entries: Vec::new(),
             status: "Ready".to_string(),
+            tx,
+            rx,
         }
     }
 }
@@ -126,7 +128,7 @@ impl App for MtsfvGui {
                             for entry in &self.entries {
                                 ui.label(entry.path.display().to_string());
                                 match &entry.state {
-                                    EntryState::Pending(_) => {
+                                    EntryState::Pending => {
                                         ui.monospace("--");
                                         ui.label("Calculating...");
                                     }
