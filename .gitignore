@@ -41,3 +41,6 @@ build32/*
 out/*
 .vscode/*
 build*/*
+# Rust build artifacts
+rust_core/target/
+rust_core/Cargo.lock
