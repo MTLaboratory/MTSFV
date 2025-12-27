@@ -1,10 +1,10 @@
 # COM Shim for Windows Explorer Integration
 
-This directory contains a minimal C++ COM shim that integrates QuickerSFV with Windows Explorer.
+This directory contains a minimal C++ COM shim that integrates MTSFV with Windows Explorer.
 
 ## Overview
 
-The COM shim implements the `IExplorerCommand` interface to provide a context menu item in Windows Explorer. When the user right-clicks on files and selects "Compute CRC32 (Rust)", the shim:
+The COM shim implements the `IExplorerCommand` interface to provide a context menu item in Windows Explorer. When the user right-clicks on files and selects "Compute Hash (MTSFV)", the shim:
 
 1. Receives the list of selected files from Windows Explorer
 2. Calls the Rust core library to compute CRC32 for each file
@@ -95,17 +95,17 @@ The following registry entries are required (example):
 Windows Registry Editor Version 5.00
 
 [HKEY_CLASSES_ROOT\CLSID\{A5B8C3D2-1F2E-4D5A-9B3C-7E8F9A1B2C3D}]
-@="QuickerSFV CRC32 Command"
+@="MTSFV Hash Command"
 
 [HKEY_CLASSES_ROOT\CLSID\{A5B8C3D2-1F2E-4D5A-9B3C-7E8F9A1B2C3D}\InprocServer32]
 @="C:\\Path\\To\\quicksfv_explorer.dll"
 "ThreadingModel"="Apartment"
 
-[HKEY_CLASSES_ROOT\*\shell\QuickerSFV.CRC32]
-@="Compute CRC32 (Rust)"
+[HKEY_CLASSES_ROOT\*\shell\MTSFV.Hash]
+@="Compute Hash (MTSFV)"
 "SubCommands"=""
 
-[HKEY_CLASSES_ROOT\*\shell\QuickerSFV.CRC32\shell\command]
+[HKEY_CLASSES_ROOT\*\shell\MTSFV.Hash\shell\command]
 "DelegateExecute"="{A5B8C3D2-1F2E-4D5A-9B3C-7E8F9A1B2C3D}"
 ```
 
@@ -114,7 +114,7 @@ Windows Registry Editor Version 5.00
 1. Build both the Rust library and COM shim
 2. Register the COM DLL: `regsvr32 quicksfv_explorer.dll`
 3. Right-click on any file in Windows Explorer
-4. Look for "Compute CRC32 (Rust)" in the context menu
+4. Look for "Compute Hash (MTSFV)" in the context menu
 5. Select one or more files and click the menu item
 6. A message box should appear showing the CRC32 checksums
 
@@ -129,7 +129,7 @@ Windows Registry Editor Version 5.00
 
 ### Key Functions
 
-- `GetTitle()`: Returns "Compute CRC32 (Rust)"
+- `GetTitle()`: Returns "Compute Hash (MTSFV)"
 - `GetToolTip()`: Returns descriptive tooltip
 - `GetState()`: Returns ECS_ENABLED for file selections
 - `Invoke()`: Called when user clicks the menu item

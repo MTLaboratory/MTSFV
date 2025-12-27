@@ -153,7 +153,7 @@ public:
         if (!ppszName) return E_POINTER;
         
         // Allocate title string
-        LPCWSTR title = L"Compute CRC32 (Rust)";
+        LPCWSTR title = L"Compute Hash (MTSFV)";
         size_t titleLen = wcslen(title) + 1;
         *ppszName = (LPWSTR)CoTaskMemAlloc(titleLen * sizeof(WCHAR));
         if (!*ppszName) return E_OUTOFMEMORY;
@@ -171,7 +171,7 @@ public:
     STDMETHODIMP GetToolTip(IShellItemArray* psiItemArray, LPWSTR* ppszInfotip) {
         if (!ppszInfotip) return E_POINTER;
         
-        LPCWSTR tooltip = L"Compute CRC32 checksum using Rust core library";
+        LPCWSTR tooltip = L"Compute checksums using MTSFV";
         size_t tooltipLen = wcslen(tooltip) + 1;
         *ppszInfotip = (LPWSTR)CoTaskMemAlloc(tooltipLen * sizeof(WCHAR));
         if (!*ppszInfotip) return E_OUTOFMEMORY;
@@ -204,7 +204,7 @@ public:
         }
 
         std::wstringstream results;
-        results << L"QuickerSFV - CRC32 Results\n";
+        results << L"MTSFV - Hash Computation Results\n";
         results << L"Using Rust core library v" 
                 << reinterpret_cast<const char*>(quicksfv_version()) 
                 << L"\n\n";
@@ -236,7 +236,7 @@ public:
         }
 
         // Display results in message box
-        MessageBoxW(nullptr, results.str().c_str(), L"QuickerSFV CRC32 Results", 
+        MessageBoxW(nullptr, results.str().c_str(), L"MTSFV - Hash Results", 
                     MB_OK | MB_ICONINFORMATION);
 
         return S_OK;
