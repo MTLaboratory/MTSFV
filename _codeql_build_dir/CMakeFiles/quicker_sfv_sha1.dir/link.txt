@@ -1,1 +1,0 @@
-/home/runner/work/MTSFV/.codeql-scratch/dbs/cpp/working/autobuild/bin/cc -fPIC -O3 -DNDEBUG -Wl,--dependency-file=CMakeFiles/quicker_sfv_sha1.dir/link.d -shared -Wl,-soname,libquicker_sfv_sha1.so -o libquicker_sfv_sha1.so CMakeFiles/quicker_sfv_sha1.dir/plugins/quicker_sfv/sha1/sha1_plugin.c.o  /usr/lib/x86_64-linux-gnu/libcrypto.so
