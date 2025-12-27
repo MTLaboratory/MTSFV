@@ -14,8 +14,14 @@ use std::slice;
 /// - The memory region is valid for the duration of this function call
 #[no_mangle]
 pub extern "C" fn quicksfv_crc32(ptr: *const u8, len: usize) -> c_uint {
-    if ptr.is_null() || len == 0 {
+    if ptr.is_null() {
         return 0u32;
+    }
+
+    // Handle empty buffer - return proper CRC32 initial value
+    if len == 0 {
+        let hasher = Hasher::new();
+        return hasher.finalize();
     }
 
     // SAFETY: Caller guarantees valid pointer/len
@@ -45,10 +51,16 @@ pub extern "C" fn quicksfv_crc32_file(path_ptr: *const u16) -> c_uint {
     }
 
     // SAFETY: Caller guarantees valid null-terminated UTF-16 string
+    // We limit the search to prevent potential issues with non-terminated strings
     let path = unsafe {
+        const MAX_PATH_LEN: usize = 32768; // Windows MAX_PATH extended limit
         let mut len = 0;
-        while *path_ptr.add(len) != 0 {
+        while len < MAX_PATH_LEN && *path_ptr.add(len) != 0 {
             len += 1;
+        }
+        if len >= MAX_PATH_LEN {
+            // Path too long or not null-terminated
+            return 0u32;
         }
         slice::from_raw_parts(path_ptr, len)
     };
@@ -116,7 +128,8 @@ mod tests {
     fn test_crc32_empty_string() {
         let data = b"";
         let result = quicksfv_crc32(data.as_ptr(), data.len());
-        assert_eq!(result, 0);
+        // Empty buffer should return proper CRC32 initial value (0x00000000)
+        assert_eq!(result, 0x00000000);
     }
 
     #[test]
