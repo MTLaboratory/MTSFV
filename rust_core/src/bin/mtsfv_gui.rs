@@ -1,17 +1,28 @@
 use eframe::{egui, App};
 use mtsfv_core::crc32_path;
 use std::path::PathBuf;
+use std::thread;
 
 #[derive(Debug)]
 struct FileEntry {
     path: PathBuf,
-    result: Result<u32, String>,
+    state: EntryState,
+}
+
+#[derive(Debug)]
+enum EntryState {
+    Pending(Option<thread::JoinHandle<Result<u32, String>>>),
+    Done(Result<u32, String>),
 }
 
 impl FileEntry {
     fn from_path(path: PathBuf) -> Self {
-        let result = crc32_path(&path).map_err(|e| e.to_string());
-        Self { path, result }
+        let worker_path = path.clone();
+        let handle = thread::spawn(move || crc32_path(&worker_path).map_err(|e| e.to_string()));
+        Self {
+            path,
+            state: EntryState::Pending(Some(handle)),
+        }
     }
 }
 
@@ -29,13 +40,36 @@ impl MtsfvGui {
             for path in files {
                 self.entries.push(FileEntry::from_path(path));
             }
-            self.status = "Ready".to_string();
+            self.status = "Calculating...".to_string();
         }
     }
 
     fn clear(&mut self) {
         self.entries.clear();
         self.status = "Cleared".to_string();
+    }
+
+    fn poll_workers(&mut self) {
+        for entry in &mut self.entries {
+            if let EntryState::Pending(handle_opt) = &mut entry.state {
+                if let Some(handle) = handle_opt {
+                    if handle.is_finished() {
+                        let handle = handle_opt.take().expect("checked Some");
+                        let result = handle
+                            .join()
+                            .unwrap_or_else(|_| Err("Background worker panicked".to_string()));
+                        entry.state = EntryState::Done(result);
+                    }
+                }
+            }
+        }
+        if self
+            .entries
+            .iter()
+            .all(|e| matches!(e.state, EntryState::Done(_)))
+        {
+            self.status = "Ready".to_string();
+        }
     }
 }
 
@@ -50,6 +84,8 @@ impl Default for MtsfvGui {
 
 impl App for MtsfvGui {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        self.poll_workers();
+
         egui::TopBottomPanel::top("header").show(ctx, |ui| {
             ui.heading("MTSFV - QuickSFV style file verifier");
             ui.horizontal(|ui| {
@@ -89,16 +125,20 @@ impl App for MtsfvGui {
                         } else {
                             for entry in &self.entries {
                                 ui.label(entry.path.display().to_string());
-                                match &entry.result {
-                                    Ok(crc) => {
+                                match &entry.state {
+                                    EntryState::Pending(_) => {
+                                        ui.monospace("--");
+                                        ui.label("Calculating...");
+                                    }
+                                    EntryState::Done(Ok(crc)) => {
                                         ui.monospace(format!("{crc:08X}"));
                                         ui.label("OK");
                                     }
-                                    Err(err) => {
+                                    EntryState::Done(Err(err)) => {
                                         ui.monospace("--");
                                         ui.label(err);
                                     }
-                                }
+                                };
                                 ui.end_row();
                             }
                         }
