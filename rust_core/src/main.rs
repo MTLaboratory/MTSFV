@@ -1,4 +1,4 @@
-use quicksfv_core::*;
+use mtsfv_core::*;
 use std::env;
 use std::fs;
 use std::io::{self, Read};
@@ -23,7 +23,8 @@ fn main() {
         io::stdin().read_to_end(&mut buffer).expect("Failed to read from stdin");
         
         let crc = unsafe {
-            quicksfv_crc32(buffer.as_ptr(), buffer.len())
+            // Safety: buffer is an owned Vec<u8> with contiguous storage that lives for the duration of the call.
+            mtsfv_crc32(buffer.as_ptr(), buffer.len())
         };
         
         println!("CRC32: {:08X}", crc);
@@ -33,7 +34,8 @@ fn main() {
             match fs::read(file_path) {
                 Ok(data) => {
                     let crc = unsafe {
-                        quicksfv_crc32(data.as_ptr(), data.len())
+                        // Safety: data is read from disk into an owned Vec<u8> with contiguous storage that lives for the duration of the call.
+                        mtsfv_crc32(data.as_ptr(), data.len())
                     };
                     println!("{}: {:08X}", file_path, crc);
                 }

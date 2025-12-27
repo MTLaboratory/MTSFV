@@ -9,11 +9,12 @@ use std::slice;
 /// 
 /// # Safety
 /// 
-/// The caller must ensure that:
+/// This function dereferences a raw pointer. The caller must ensure that:
 /// - `ptr` points to valid memory of at least `len` bytes
-/// - The memory region is valid for the duration of this function call
+/// - The memory region is readable and lives for the duration of this call
+/// - The buffer is not mutated by other threads while the function runs
 #[no_mangle]
-pub extern "C" fn quicksfv_crc32(ptr: *const u8, len: usize) -> c_uint {
+pub unsafe extern "C" fn mtsfv_crc32(ptr: *const u8, len: usize) -> c_uint {
     if ptr.is_null() {
         return 0u32;
     }
@@ -36,16 +37,17 @@ pub extern "C" fn quicksfv_crc32(ptr: *const u8, len: usize) -> c_uint {
 /// 
 /// # Safety
 /// 
-/// The caller must ensure that:
-/// - `path_ptr` points to a valid null-terminated UTF-16 string
-/// - The path string is valid for the duration of this function call
+/// This function reads from a raw UTF-16 string pointer. The caller must ensure that:
+/// - `path_ptr` points to a valid, null-terminated UTF-16 string
+/// - The pointed-to string is readable and lives for the duration of this call
+/// - The string length does not exceed 32,768 characters (Windows extended MAX_PATH limit)
 /// 
 /// # Returns
 /// 
 /// Returns the CRC32 checksum on success, or 0 on error.
 /// In production code, a separate error code mechanism should be used.
 #[no_mangle]
-pub extern "C" fn quicksfv_crc32_file(path_ptr: *const u16) -> c_uint {
+pub unsafe extern "C" fn mtsfv_crc32_file(path_ptr: *const u16) -> c_uint {
     if path_ptr.is_null() {
         return 0u32;
     }
@@ -101,8 +103,13 @@ fn compute_file_crc32(path: &PathBuf) -> std::io::Result<u32> {
 }
 
 /// Version information
+///
+/// # Safety
+///
+/// The returned pointer references a static, null-terminated string. Callers
+/// must treat it as read-only and must not free or mutate the pointed-to memory.
 #[no_mangle]
-pub extern "C" fn quicksfv_version() -> *const u8 {
+pub unsafe extern "C" fn mtsfv_version() -> *const u8 {
     "0.1.0\0".as_ptr()
 }
 
@@ -110,9 +117,13 @@ pub extern "C" fn quicksfv_version() -> *const u8 {
 mod tests {
     use super::*;
 
+    fn crc(ptr: *const u8, len: usize) -> u32 {
+        unsafe { mtsfv_crc32(ptr, len) }
+    }
+
     #[test]
     fn test_crc32_empty() {
-        let result = quicksfv_crc32(std::ptr::null(), 0);
+        let result = crc(std::ptr::null(), 0);
         assert_eq!(result, 0);
     }
 
@@ -120,14 +131,14 @@ mod tests {
     fn test_crc32_known_vectors() {
         // Test vector: "123456789" should produce 0xCBF43926
         let data = b"123456789";
-        let result = quicksfv_crc32(data.as_ptr(), data.len());
+        let result = crc(data.as_ptr(), data.len());
         assert_eq!(result, 0xCBF43926);
     }
 
     #[test]
     fn test_crc32_empty_string() {
         let data = b"";
-        let result = quicksfv_crc32(data.as_ptr(), data.len());
+        let result = crc(data.as_ptr(), data.len());
         // Empty buffer should return proper CRC32 initial value (0x00000000)
         assert_eq!(result, 0x00000000);
     }
@@ -136,7 +147,7 @@ mod tests {
     fn test_crc32_hello_world() {
         // Test with common string
         let data = b"Hello, World!";
-        let result = quicksfv_crc32(data.as_ptr(), data.len());
+        let result = crc(data.as_ptr(), data.len());
         // Pre-computed CRC32 for "Hello, World!"
         assert_eq!(result, 0xEC4AC3D0);
     }
@@ -169,12 +180,12 @@ mod tests {
         let data: [u8; 9] = [0x1a, 0x2b, 0x3c, 0x4f, 0x5a, 0x6b, 0x7c, 0x8d, 0x9e];
         
         // Full array should produce 0xb0c3bbc7
-        let result = quicksfv_crc32(data.as_ptr(), data.len());
+        let result = crc(data.as_ptr(), data.len());
         assert_eq!(result, 0xb0c3bbc7, 
             "Full array CRC32 mismatch: expected 0xb0c3bbc7, got 0x{:08x}", result);
         
         // First 5 bytes should produce 0x4a6fa7d5
-        let result5 = quicksfv_crc32(data.as_ptr(), 5);
+        let result5 = crc(data.as_ptr(), 5);
         assert_eq!(result5, 0x4a6fa7d5,
             "First 5 bytes CRC32 mismatch: expected 0x4a6fa7d5, got 0x{:08x}", result5);
         
