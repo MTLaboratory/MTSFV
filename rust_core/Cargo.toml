@@ -1,5 +1,5 @@
 [package]
-name = "quicksfv_core"
+name = "mtsfv"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,7 +8,7 @@ name = "mtsfv"
 path = "src/main.rs"
 
 [lib]
-name = "quicksfv_core"
+name = "mtsfv_core"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]

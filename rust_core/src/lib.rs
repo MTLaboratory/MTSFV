@@ -113,36 +113,6 @@ pub unsafe extern "C" fn mtsfv_version() -> *const u8 {
     "0.1.0\0".as_ptr()
 }
 
-/// Legacy entry point preserved for compatibility with previous C callers.
-///
-/// # Safety
-///
-/// See [`mtsfv_crc32`] for safety requirements.
-#[no_mangle]
-pub unsafe extern "C" fn quicksfv_crc32(ptr: *const u8, len: usize) -> c_uint {
-    mtsfv_crc32(ptr, len)
-}
-
-/// Legacy entry point preserved for compatibility with previous C callers.
-///
-/// # Safety
-///
-/// See [`mtsfv_crc32_file`] for safety requirements.
-#[no_mangle]
-pub unsafe extern "C" fn quicksfv_crc32_file(path_ptr: *const u16) -> c_uint {
-    mtsfv_crc32_file(path_ptr)
-}
-
-/// Legacy entry point preserved for compatibility with previous C callers.
-///
-/// # Safety
-///
-/// See [`mtsfv_version`] for safety requirements.
-#[no_mangle]
-pub unsafe extern "C" fn quicksfv_version() -> *const u8 {
-    mtsfv_version()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
