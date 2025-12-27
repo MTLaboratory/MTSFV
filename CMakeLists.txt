@@ -374,6 +374,78 @@ if(BUILD_PLUGINS)
     endif(BUILD_RAR_PLUGIN)
 endif()
 
+# Rust Core Library Integration
+option(BUILD_RUST_CORE "Build the Rust core library for CRC32 computation" ON)
+if(BUILD_RUST_CORE)
+    find_program(CARGO_EXECUTABLE cargo)
+    if(CARGO_EXECUTABLE)
+        message(STATUS "Found Cargo: ${CARGO_EXECUTABLE}")
+        
+        # Determine target triple for cross-compilation if needed
+        if(WIN32)
+            if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+                set(RUST_TARGET "x86_64-pc-windows-msvc")
+            else()
+                set(RUST_TARGET "i686-pc-windows-msvc")
+            endif()
+            set(RUST_LIB_NAME "quicksfv_core.dll")
+        elseif(APPLE)
+            if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64|aarch64")
+                set(RUST_TARGET "aarch64-apple-darwin")
+            else()
+                set(RUST_TARGET "x86_64-apple-darwin")
+            endif()
+            set(RUST_LIB_NAME "libquicksfv_core.dylib")
+        else()
+            if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+                set(RUST_TARGET "x86_64-unknown-linux-gnu")
+            else()
+                set(RUST_TARGET "i686-unknown-linux-gnu")
+            endif()
+            set(RUST_LIB_NAME "libquicksfv_core.so")
+        endif()
+        
+        set(RUST_BUILD_DIR "${CMAKE_SOURCE_DIR}/rust_core/target/release")
+        set(RUST_LIB_PATH "${RUST_BUILD_DIR}/${RUST_LIB_NAME}")
+        
+        # Add custom target to build Rust library
+        add_custom_target(rust_core_build ALL
+            COMMAND ${CARGO_EXECUTABLE} build --release --manifest-path ${CMAKE_SOURCE_DIR}/rust_core/Cargo.toml
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/rust_core
+            COMMENT "Building Rust core library (${RUST_TARGET})"
+            VERBATIM
+        )
+        
+        # Create imported library target
+        add_library(rust_quicksfv_core SHARED IMPORTED GLOBAL)
+        set_target_properties(rust_quicksfv_core PROPERTIES
+            IMPORTED_LOCATION ${RUST_LIB_PATH}
+        )
+        add_dependencies(rust_quicksfv_core rust_core_build)
+        
+        # Copy Rust library to output directory if QuickerSFV target exists
+        if(TARGET QuickerSFV)
+            add_custom_command(TARGET rust_core_build POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    ${RUST_LIB_PATH}
+                    $<TARGET_FILE_DIR:QuickerSFV>
+                COMMENT "Copying Rust library to output directory"
+            )
+        endif()
+        
+        # Install Rust library
+        install(FILES ${RUST_LIB_PATH}
+            DESTINATION bin
+            OPTIONAL
+        )
+        
+        message(STATUS "Rust core library will be built at: ${RUST_LIB_PATH}")
+    else()
+        message(WARNING "Cargo not found. Rust core library will not be built. Install Rust from https://rustup.rs/")
+        set(BUILD_RUST_CORE OFF CACHE BOOL "Cargo not available" FORCE)
+    endif()
+endif()
+
 if (QUICKER_SFV_USE_BUNDLED_OPENSSL)
     include(CMakePackageConfigHelpers)
     configure_package_config_file(
