@@ -15,7 +15,6 @@ impl FileEntry {
     }
 }
 
-#[derive(Default)]
 struct MtsfvGui {
     entries: Vec<FileEntry>,
     status: String,
@@ -37,6 +36,15 @@ impl MtsfvGui {
     fn clear(&mut self) {
         self.entries.clear();
         self.status = "Cleared".to_string();
+    }
+}
+
+impl Default for MtsfvGui {
+    fn default() -> Self {
+        Self {
+            entries: Vec::new(),
+            status: "Ready".to_string(),
+        }
     }
 }
 
@@ -106,10 +114,7 @@ fn main() -> eframe::Result<()> {
         "MTSFV - File Verifier",
         options,
         Box::new(|_cc| {
-            Ok(Box::new(MtsfvGui {
-                entries: Vec::new(),
-                status: "Ready".to_string(),
-            }))
+            Ok(Box::new(MtsfvGui::default()))
         }),
     )
 }
