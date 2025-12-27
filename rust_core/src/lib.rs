@@ -2,7 +2,7 @@ use crc32fast::Hasher;
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::os::raw::c_uint;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::slice;
 
 /// Compute CRC32 checksum for a byte buffer
@@ -85,7 +85,7 @@ pub unsafe extern "C" fn mtsfv_crc32_file(path_ptr: *const u16) -> c_uint {
 }
 
 /// Internal function to compute CRC32 of a file
-fn compute_file_crc32(path: &PathBuf) -> std::io::Result<u32> {
+fn compute_file_crc32(path: &Path) -> std::io::Result<u32> {
     let file = File::open(path)?;
     let mut reader = BufReader::new(file);
     let mut hasher = Hasher::new();
@@ -100,6 +100,14 @@ fn compute_file_crc32(path: &PathBuf) -> std::io::Result<u32> {
     }
 
     Ok(hasher.finalize())
+}
+
+/// Compute CRC32 checksum for a file path.
+///
+/// This safe helper is intended for internal callers that already have a `Path`
+/// available and want a straightforward result type instead of the FFI-style API.
+pub fn crc32_path(path: impl AsRef<Path>) -> std::io::Result<u32> {
+    compute_file_crc32(path.as_ref())
 }
 
 /// Version information
@@ -204,5 +212,35 @@ mod tests {
         let hasher = Hasher::new();
         let result = hasher.finalize();
         assert_eq!(result, 0x00000000);
+    }
+
+    #[test]
+    fn test_crc32_path_helper() {
+        use std::fs::File;
+        use std::io::Write;
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        let mut tmp_path = std::env::temp_dir();
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        tmp_path.push(format!("mtsfv_crc_test_{}.txt", unique));
+
+        struct TempFile(std::path::PathBuf);
+        impl Drop for TempFile {
+            fn drop(&mut self) {
+                let _ = std::fs::remove_file(&self.0);
+            }
+        }
+        let _cleanup = TempFile(tmp_path.clone());
+
+        {
+            let mut f = File::create(&tmp_path).expect("create temp file");
+            f.write_all(b"123456789").expect("write temp data");
+        }
+
+        let crc = crc32_path(&tmp_path).expect("crc32 calculation");
+        assert_eq!(crc, 0xCBF43926);
     }
 }
