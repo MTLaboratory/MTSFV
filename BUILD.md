@@ -3,6 +3,8 @@ Build Instructions
 
 QuickerSFV can be built on Windows using Microsoft Visual Studio 2022. The core and client support libraries can be built on Linux using clang 19+ or gcc 14+. There is currently no user client for Linux. This document describes the steps for building the full project on Windows.
 
+The project includes a Rust core library (`rust_core`) that provides optimized CRC32 computation. See [RUST_INTEGRATION.md](RUST_INTEGRATION.md) for details on the Rust components.
+
 Prerequisites
 -------------
 
@@ -10,6 +12,7 @@ Prerequisites
 - Microsoft Windows 11 SDK 10.0.22621.0 (if you get compile errors due to missing min/max macros in gdiplus.h, you need to upgrade your Windows SDK).
 - [nasm - The Netwide Assembler](https://www.nasm.us/) version 2.15 or higher.
 - CMake version 3.30 or higher.
+- (Optional) [Rust toolchain](https://rustup.rs/) version 1.70 or higher for building the Rust core library.
 
 Build Instructions
 ------------------
@@ -34,3 +37,18 @@ The following options can be set in CMake to configure the build.
    - `BUILD_PLUGINS` (Default: `ON`) - Enable building of the bundled plugins. This option is not available if `QUICKER_SFV_BUILD_SELF_CONTAINED` is set to `ON`.
    - `BUILD_SHA1_PLUGIN` (Default: `ON`) - Build the SHA1 C plugin. This option is only available if `BUILD_PLUGINS` is `ON`.
    - `BUILD_RAR_PLUGIN` (Default: `ON`) - Build the WinRar C++ plugin. This option is only available if `BUILD_PLUGINS` is `ON`.
+
+Rust Core Library
+-----------------
+
+The project includes an experimental Rust core library that provides optimized CRC32 computation using hardware acceleration (SSE4.2, AVX512, PCLMUL). 
+
+To build and test the Rust library independently:
+
+    $ cd rust_core
+    $ cargo build --release
+    $ cargo test
+
+For more information on integrating the Rust library with the C++ codebase, see [RUST_INTEGRATION.md](RUST_INTEGRATION.md).
+
+The Rust library is optional and not required for building the main QuickerSFV application. It is provided as a foundation for future performance improvements and as a reference implementation for a potential full Rust migration.
