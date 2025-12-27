@@ -1,6 +1,6 @@
 use eframe::{egui, App};
 use mtsfv_core::crc32_path;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 use std::thread;
 
@@ -14,6 +14,10 @@ struct FileEntry {
 enum EntryState {
     Pending,
     Done(Result<u32, String>),
+}
+
+fn compute_crc_for_display(path: &Path) -> Result<u32, String> {
+    crc32_path(path).map_err(|e| format!("{}: {}", path.display(), e))
 }
 
 struct MtsfvGui {
@@ -31,16 +35,21 @@ impl MtsfvGui {
         {
             for path in files {
                 let worker_tx = self.tx.clone();
+                let worker_path = path.clone();
                 self.entries.push(FileEntry {
-                    path: path.clone(),
+                    path,
                     state: EntryState::Pending,
                 });
 
-                let worker_path = path.clone();
                 thread::spawn(move || {
-                    let result = crc32_path(&worker_path)
-                        .map_err(|e| format!("{}: {}", worker_path.display(), e));
-                    let _ = worker_tx.send((worker_path, result));
+                    let result = compute_crc_for_display(&worker_path);
+                    let path_for_send = worker_path.clone();
+                    if let Err(err) = worker_tx.send((path_for_send, result)) {
+                        eprintln!(
+                            "Failed to send CRC result for {}: {err}",
+                            worker_path.display()
+                        );
+                    }
                 });
             }
             self.status = "Calculating...".to_string();
