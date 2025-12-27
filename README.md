@@ -26,4 +26,15 @@ echo -n '123456789' | cargo run --bin mtsfv -- --stdin
 cargo run --bin mtsfv -- file1.txt file2.txt
 ```
 
-The release binary will be available at `rust_core/target/release/mtsfv.exe` on Windows (or `mtsfv` on Unix-like systems). Historical documentation files remain in the repository for reference, but only the Rust CLI is supported going forward.
+The release binary will be available at `rust_core/target/release/mtsfv.exe` on Windows (or `mtsfv` on Unix-like systems). Historical documentation files remain in the repository for reference, and both the Rust CLI and the Windows GUI are supported going forward.
+
+## Windows GUI
+
+Run the GUI build to select files in a QuickSFV-style list:
+
+```bash
+cd rust_core
+cargo run --release --bin mtsfv_gui
+```
+
+On Windows the packaged binary will be located at `rust_core/target/release/mtsfv_gui.exe`.
