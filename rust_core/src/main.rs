@@ -22,9 +22,7 @@ fn main() {
         let mut buffer = Vec::new();
         io::stdin().read_to_end(&mut buffer).expect("Failed to read from stdin");
         
-        let crc = unsafe {
-            quicksfv_crc32(buffer.as_ptr(), buffer.len())
-        };
+        let crc = quicksfv_crc32(buffer.as_ptr(), buffer.len());
         
         println!("CRC32: {:08X}", crc);
     } else {
@@ -32,9 +30,7 @@ fn main() {
         for file_path in &args[1..] {
             match fs::read(file_path) {
                 Ok(data) => {
-                    let crc = unsafe {
-                        quicksfv_crc32(data.as_ptr(), data.len())
-                    };
+                    let crc = quicksfv_crc32(data.as_ptr(), data.len());
                     println!("{}: {:08X}", file_path, crc);
                 }
                 Err(e) => {
